@@ -13,7 +13,7 @@ app.use((req, res, next) => {
 });
 
 app.get("/", (req, res) => {
-  res.send(`Hello from my ${APP_NAME} Linux server!`);
+  res.send(`Hello from my docker v2 ${APP_NAME}`);
 });
 
 app.get("/health", (req, res) => {
