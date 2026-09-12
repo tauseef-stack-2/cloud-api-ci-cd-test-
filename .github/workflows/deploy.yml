@@ -17,16 +17,16 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
     
-    script: |
-      cd ~/docker-cloud-practice/cloud-api-ci-cd-test
+          script: |
+            cd ~/docker-cloud-practice/cloud-api-ci-cd-test
 
-      git pull origin main
+            git pull origin main
 
-      docker build -t docker-clod-api:latest
+            docker build -t docker-clod-api:latest
 
-      docker stop c2-docker-cloud-practice-api || true
-      docker rm c2-docker-cloud-practice-api || true
+            docker stop c2-docker-cloud-practice-api || true
+            docker rm c2-docker-cloud-practice-api || true
 
-      docker run -d --env-file .env --name c2-docker-cloud-practice-api -p 3000:3000 docker-clod-api:latest
+            docker run -d --env-file .env --name c2-docker-cloud-practice-api -p 3000:3000 docker-clod-api:latest
       
         
