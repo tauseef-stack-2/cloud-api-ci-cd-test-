@@ -13,13 +13,13 @@ app.use((req, res, next) => {
 });
 
 app.get("/", (req, res) => {
-  res.send(`Hello from my docker v2 ${APP_NAME} ci/cd from docker github actions`);
+  res.send(`Hello from my docker v2 ${APP_NAME} ci/cd from docker github actions ECR and then EC2`);
 });
 
 app.get("/health", (req, res) => {
   res.json({
     status: "OK",
-    message: "Server is running from docker and github action",
+    message: "Server is running from docker and github action ECR and then EC2",
   });
 });
 

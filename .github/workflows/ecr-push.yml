@@ -1,4 +1,4 @@
-name: Build and Push Docker Image to ECR
+name: Build, Push and Deploy
 
 on:
   push:
@@ -9,76 +9,133 @@ permissions:
   id-token: write
   contents: read
 
+env:
+  AWS_REGION: eu-north-1
+  ECR_REPOSITORY: cloud-api-practice-repo
+  ECR_REGISTRY: 029637202653.dkr.ecr.eu-north-1.amazonaws.com
+  CONTAINER_NAME: ec2-docker-cloud-practice-api
+  CONTAINER_PORT: 3000
+
 jobs:
-  build-and-push:
+  build-push-deploy:
     runs-on: ubuntu-latest
 
     steps:
+      # --------------------------------
+      # 1. Checkout
+      # --------------------------------
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Debug OIDC claims
-        shell: bash
-        run: |
-          set -e
-
-          echo "Requesting GitHub OIDC token..."
-
-          RESPONSE=$(curl -sSf \
-            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com")
-
-          TOKEN=$(echo "$RESPONSE" | jq -r '.value')
-
-          if [ -z "$TOKEN" ] || [ "$TOKEN" = "null" ]; then
-            echo "Failed to obtain OIDC token"
-            exit 1
-          fi
-
-          PAYLOAD=$(echo "$TOKEN" | cut -d '.' -f 2)
-
-          PAYLOAD=$(echo "$PAYLOAD" | tr '_-' '/+')
-
-          case $((${#PAYLOAD} % 4)) in
-            2) PAYLOAD="${PAYLOAD}==" ;;
-            3) PAYLOAD="${PAYLOAD}=" ;;
-          esac
-
-          echo "$PAYLOAD" | base64 -d 2>/dev/null | jq '{
-            iss,
-            aud,
-            sub,
-            repository,
-            repository_owner,
-            ref,
-            actor
-          }'
-
+      # --------------------------------
+      # 2. Configure AWS using OIDC
+      # --------------------------------
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::029637202653:role/GitHubActions-ECR-Push-CloudAPI
-          aws-region: eu-north-1
+          aws-region: ${{ env.AWS_REGION }}
 
+      # --------------------------------
+      # 3. Login to ECR
+      # --------------------------------
       - name: Login to Amazon ECR
-        id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
+      # --------------------------------
+      # 4. Build Docker image
+      # --------------------------------
       - name: Build Docker image
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: cloud-api-practice-repo
-          IMAGE_TAG: ${{ github.sha }}
         run: |
           docker build \
-            -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
+            -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} \
             .
 
+      # --------------------------------
+      # 5. Push image to ECR
+      # --------------------------------
       - name: Push Docker image
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: cloud-api-practice-repo
-          IMAGE_TAG: ${{ github.sha }}
         run: |
           docker push \
-            $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+            $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
+
+      # --------------------------------
+      # 6. Deploy to EC2
+      # --------------------------------
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+
+          script: |
+            set -e
+
+            echo "================================"
+            echo "Connected to EC2"
+            echo "================================"
+
+            whoami
+            hostname
+
+            echo "================================"
+            echo "Logging into ECR"
+            echo "================================"
+
+            aws ecr get-login-password \
+              --region eu-north-1 | \
+              docker login \
+              --username AWS \
+              --password-stdin \
+              029637202653.dkr.ecr.eu-north-1.amazonaws.com
+
+            echo "================================"
+            echo "Pulling new Docker image"
+            echo "================================"
+
+            docker pull \
+              029637202653.dkr.ecr.eu-north-1.amazonaws.com/cloud-api-practice-repo:${{ github.sha }}
+
+            echo "================================"
+            echo "Stopping old container"
+            echo "================================"
+
+            docker stop ec2-docker-cloud-practice-api || true
+
+            echo "================================"
+            echo "Removing old container"
+            echo "================================"
+
+            docker rm ec2-docker-cloud-practice-api || true
+
+            echo "================================"
+            echo "Starting new container"
+            echo "================================"
+
+            cd /home/ubuntu/docker-cloud-practice/cloud-api-ci-cd-test-
+
+            docker run -d \
+              --env-file .env \
+              --name ec2-docker-cloud-practice-api \
+              -p 3000:3000 \
+              029637202653.dkr.ecr.eu-north-1.amazonaws.com/cloud-api-practice-repo:${{ github.sha }}
+
+            echo "================================"
+            echo "Running containers"
+            echo "================================"
+
+            docker ps
+
+            echo "================================"
+            echo "Health check"
+            echo "================================"
+
+            sleep 3
+
+            curl --fail http://localhost:3000/health
+
+            echo
+            echo "================================"
+            echo "DEPLOYMENT SUCCESSFUL"
+            echo "================================"
