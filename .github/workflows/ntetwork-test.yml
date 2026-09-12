@@ -1,0 +1,16 @@
+name: EC2 Network Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Test EC2 port 22
+        run: |
+          echo "Testing 51.21.91.153:22"
+          timeout 10 bash -c '</dev/tcp/51.21.91.153/22' \
+            && echo "Port 22 is reachable" \
+            || echo "Port 22 is NOT reachable"
