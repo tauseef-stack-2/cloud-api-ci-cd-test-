@@ -13,4 +13,4 @@ jobs:
           echo "Testing 51.21.91.153:22"
           timeout 10 bash -c '</dev/tcp/51.21.91.153/22' \
             && echo "Port 22 is reachable" \
-            || echo "Port 22 is NOT reachable"
+            || echo "Port 22 is NOT reachable"  
