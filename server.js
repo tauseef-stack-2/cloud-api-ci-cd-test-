@@ -13,7 +13,7 @@ app.use((req, res, next) => {
 });
 
 app.get("/", (req, res) => {
-  res.send(`Hello from my docker v2 ${APP_NAME}`);
+  res.send(`Hello from my docker v2 ${APP_NAME} ci/cd from github actions`);
 });
 
 app.get("/health", (req, res) => {
