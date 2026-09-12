@@ -22,7 +22,7 @@ jobs:
 
             git pull origin main
 
-            docker build -t docker-clod-api:latest
+            docker build -t docker-clod-api:latest .
 
             docker stop c2-docker-cloud-practice-api || true
             docker rm c2-docker-cloud-practice-api || true
