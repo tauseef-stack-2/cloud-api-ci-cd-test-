@@ -23,15 +23,16 @@ app.get("/health", (req, res) => {
   });
 });
 
-app.get("/cpu-test", (req, res) => {
-  const start = Date.now();
+// Added just to test the Auto Scaling on AWS
+// app.get("/cpu-test", (req, res) => {
+//   const start = Date.now();
 
-  while (Date.now() - start < 10000) {
-    Math.sqrt(Math.random() * 1000000);
-  }
+//   while (Date.now() - start < 10000) {
+//     Math.sqrt(Math.random() * 1000000);
+//   }
 
-  res.send("CPU test completed");
-});
+//   res.send("CPU test completed");
+// });
 
 app.listen(PORT, () => {
   console.log(`${APP_NAME} Server running on port ${PORT}`);
